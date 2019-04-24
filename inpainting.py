@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 # from matplotlib import cm
-# from random import *
+from random import *
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
@@ -57,6 +57,34 @@ def score(predictions, y):
             score += 1
     return score
 
+# Part 2 functions 
+def readImage(path):
+    image = plt.imread(path)
+    # img[0] => premiere rangee de pixels
+    # img[0][0] => premiere rangee et premiere colonne
+    # img[0][0][0] => premiere rangee, colonne, teinte rouge
+    # (255,255,255) => blanc, 0 => noir
+    #print(len(image[0]))
+    return np.array(image)
+
+# TODO : numpy pour les forloop
+def noise(img, percent):
+    for row in range (len(img)):
+        for col in range (len(image[row])):
+            if (random()*100 > percent):
+                for rgb in range (3):
+                    img[row][col][rgb] = 0
+    return img
+
+# TODO : numpy pour les forloop
+def deleteRectangle(img, row, col, height, width):
+    for i in range (row, row + height):
+        print(i)
+        for j in range (col, col + width):
+            for rgb in range (3):
+                img[i][j][rgb] = 0
+    return img
+
 if __name__=="__main__":
     # Loading data
     dataTrain = load_usps("USPS_train.txt")
@@ -99,4 +127,14 @@ if __name__=="__main__":
     lassoRegression(tX, tY, teX, teY)
     
     # VISUALISATION DU VECTEUR DE POIDS : REG.coef
-   
+
+#0 -> 127 -1,0, 128 => 255 : 0, 1
+    
+    # PART 2
+    image = readImage("akita.jpg")
+    plt.figure()
+    plt.imshow(image)
+    plt.figure()
+    plt.imshow(noise(image, 50))
+    plt.figure()
+    plt.imshow(deleteRectangle(image, 100, 200, 40, 80))
