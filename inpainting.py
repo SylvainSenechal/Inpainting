@@ -73,18 +73,29 @@ def noise(img, percent):
         for col in range (len(image[row])):
             if (random()*100 > percent):
                 for rgb in range (3):
-                    img[row][col][rgb] = 0
+                    img[row][col][rgb] = 0 # TODO voir si 0 est bien pour pixel retiré, ou plutot utiliser -100
     return img
 
 # TODO : numpy pour les forloop
 def deleteRectangle(img, row, col, height, width):
     for i in range (row, row + height):
-        print(i)
         for j in range (col, col + width):
             for rgb in range (3):
                 img[i][j][rgb] = 0
     return img
 
+def getPatch(img, row, col, h):
+    patch = np.empty(shape=(h, h, 3))
+    for i in range (h):
+        for j in range (h):
+            print(img[row - int (h/2) + i][col - int (h/2) + j])
+            patch[i][j] = img[row - int (h/2) + i][col - int (h/2) + j]
+    return patch
+
+def patchToVector(patch):
+    return patch.flatten()
+def vectorToPatch(vector, h):
+    return vector.reshape(h, h, 3)
 if __name__=="__main__":
     # Loading data
     dataTrain = load_usps("USPS_train.txt")
@@ -131,10 +142,19 @@ if __name__=="__main__":
 #0 -> 127 -1,0, 128 => 255 : 0, 1
     
     # PART 2
-    image = readImage("akita.jpg")
-    plt.figure()
-    plt.imshow(image)
-    plt.figure()
-    plt.imshow(noise(image, 50))
-    plt.figure()
-    plt.imshow(deleteRectangle(image, 100, 200, 40, 80))
+    # TODO : voir si les fonctions de noise et de manipulation d'image modifient l'image d'origine (à priori oui)
+    image = readImage("imgTest.jpg")
+    #plt.figure()
+    #plt.imshow(image)
+    #plt.figure()
+    #plt.imshow(noise(image, 50))
+    #plt.figure()
+    #plt.imshow(deleteRectangle(image, 100, 200, 60, 120))
+    
+    patch = getPatch(image, 1, 2, 3)
+    print(patch)
+    print(patchToVector(patch))
+    print( vectorToPatch(patchToVector(patch), 3) )
+    
+    
+    # TODO idee : faire une fonction de dst entre imgage de base et image reconstruite pour voir la qualite
