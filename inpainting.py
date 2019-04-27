@@ -117,7 +117,7 @@ def getDictionary(img, h):
                 if patch[row][col][0] == 0 and patch[row][col][1] == 0 and patch[row][col][2] == 0:
                     remove = True
         if not remove:
-            filteredDico.append(patch)
+            filteredDico.append(patchToVector(patch))
     return np.array(filteredDico)
 
 def getPatchMissingPixels(img, h):
@@ -148,21 +148,32 @@ def getMiddleDico(dico, h):
         middle.append( dico[patch][int (h/2)][int (h/2)][0] )
     return np.array(middle)
 
-def lassoImpaiting(dictionnary, middleDictionnary):
+def lassoImpaiting(dictionnary, patch):
     print("STARTING LASSO IMPAINTING")
-    lasso = Lasso(alpha=0.01)
+    lasso = Lasso(alpha=0.1, max_iter=1000)
     #lasso.fit(dictionnary, middleDictionnary)
     #lasso.fit([[1,2], [2,4], [4,8]], [[2,4], [4,8], [8,16]])
-
-    x1 = patchToVector(dictionnary[0])
-    x2 = patchToVector(dictionnary[30])
-    print(x1)
-    print(x2)
-    print(np.array([x1,x2]))
-    target = x2.copy()
-    #target[0] = 60
-    #target[1] = 91
-    lasso.fit(np.array([x1,x2]).transpose(), target)
+    
+    lasso.fit(dictionnary.transpose(), patch) 
+    #print(dictionnary.transpose() * lasso.coef_)
+    reconstruct = np.matmul(dictionnary.transpose(), lasso.coef_)
+    print(len(reconstruct))
+    recons = np.zeros(27)
+    for i in range (27):
+        for j in range (100):
+            recons[i] += dictionnary[j][i] * lasso.coef_[j]
+    print(patch)
+    print(recons)
+    #x1 = patchToVector(dictionnary[0])
+    #x2 = patchToVector(dictionnary[30])
+    #print(x1)
+    #print(x2)
+    #print(np.array([x1,x2]))
+    #target = x2.copy()
+    ##target[0] = 60
+    ##target[1] = 91
+    #lasso.fit(np.array([x1,x2]).transpose(), target)
+    
     #row_ind = np.array([0, 1, 2, 0, 1, 2])
     #col_ind = np.array([0, 0, 0, 1, 1, 1])
     #data = np.array([2, 2, 5, 8, 8, 20], dtype=float)
@@ -176,7 +187,7 @@ def lassoImpaiting(dictionnary, middleDictionnary):
     #lasso.fit(mat_coo, [2, 2, 5])
     #print(lasso.predict([[1,2]]))
     
-    print(lasso.coef_)
+    #print(lasso.coef_)
 
 if __name__=="__main__":
     ### PART 1 ################################################################
@@ -227,6 +238,7 @@ if __name__=="__main__":
     
     ### PART 2 ################################################################
     # TODO : voir si les fonctions de noise et de manipulation d'image modifient l'image d'origine (à priori oui)
+    print("PART 2 ###############################################################################")
     image = readImage("akitaSmall.jpg")
     #plt.figure()
     #plt.imshow(image)
@@ -242,8 +254,8 @@ if __name__=="__main__":
     
     dico = getDictionary(image, 3)
     #patchMissingPx = getPatchMissingPixels(image, 3)
-    middleDico = getMiddleDico(dico, 3)
-    lassoImpaiting(dico, middleDico)
+    #middleDico = getMiddleDico(dico, 3)
+    lassoImpaiting(dico[:3000], dico[2000])
    
     
     
@@ -257,6 +269,7 @@ if __name__=="__main__":
     
     
     
-    
+    # RAPPORT A NOTER UTILITE DU ALPHA : pour avoir querlques coeff du lasso eleves et le reste a 0,
+    # plutot que tous a 0.0000..
     # TODO idee : faire une fonction de dst entre imgage de base et image reconstruite pour voir la qualite
     # TODO idee : noise function avec perlin noise ?
