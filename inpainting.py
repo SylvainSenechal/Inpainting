@@ -6,6 +6,7 @@ from random import *
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
+from scipy import sparse
 
 def load_usps(fn):
     with open(fn,"r") as f:
@@ -149,15 +150,33 @@ def getMiddleDico(dico, h):
 
 def lassoImpaiting(dictionnary, middleDictionnary):
     print("STARTING LASSO IMPAINTING")
-    lasso = Lasso(alpha=0.1)
-    lasso.fit(dictionnary, middleDictionnary)
-    
-    #predictions = lasso.predict(teX)
-    #print(lasso.score(teX, teY))
-    #print(lasso.intercept_)
-    #print("score lassoRegression : ", score(predictions, teY), "out of : ", len(teY))
-    #print(lasso.coef_)
+    lasso = Lasso(alpha=0.01)
+    #lasso.fit(dictionnary, middleDictionnary)
+    #lasso.fit([[1,2], [2,4], [4,8]], [[2,4], [4,8], [8,16]])
 
+    x1 = patchToVector(dictionnary[0])
+    x2 = patchToVector(dictionnary[30])
+    print(x1)
+    print(x2)
+    print(np.array([x1,x2]))
+    target = x2.copy()
+    #target[0] = 60
+    #target[1] = 91
+    lasso.fit(np.array([x1,x2]).transpose(), target)
+    #row_ind = np.array([0, 1, 2, 0, 1, 2])
+    #col_ind = np.array([0, 0, 0, 1, 1, 1])
+    #data = np.array([2, 2, 5, 8, 8, 20], dtype=float)
+    #mat_coo = sparse.coo_matrix((data, (row_ind, col_ind)))
+    #print(mat_coo)
+    #print(mat_coo.todense())
+    
+    ##a = np.array([2,2,5,8,8,20]).reshape(2,3).transpose()
+    #a = np.array([[2,2,5], [8,8,20]]).transpose()
+    
+    #lasso.fit(mat_coo, [2, 2, 5])
+    #print(lasso.predict([[1,2]]))
+    
+    print(lasso.coef_)
 
 if __name__=="__main__":
     ### PART 1 ################################################################
@@ -208,11 +227,11 @@ if __name__=="__main__":
     
     ### PART 2 ################################################################
     # TODO : voir si les fonctions de noise et de manipulation d'image modifient l'image d'origine (à priori oui)
-    image = readImage("akita.jpg")
+    image = readImage("akitaSmall.jpg")
     #plt.figure()
     #plt.imshow(image)
-    plt.figure()
-    plt.imshow(noise(image, 5))
+    #plt.figure()
+    #plt.imshow(noise(image, 5))
     #plt.figure()
     #plt.imshow(deleteRectangle(image, 100, 200, 60, 120))
     
@@ -224,9 +243,20 @@ if __name__=="__main__":
     dico = getDictionary(image, 3)
     #patchMissingPx = getPatchMissingPixels(image, 3)
     middleDico = getMiddleDico(dico, 3)
-    #print(middleDico)
-    
     lassoImpaiting(dico, middleDico)
    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     # TODO idee : faire une fonction de dst entre imgage de base et image reconstruite pour voir la qualite
     # TODO idee : noise function avec perlin noise ?
