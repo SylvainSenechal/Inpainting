@@ -70,19 +70,21 @@ def readImage(path):
 
 # TODO : numpy pour les forloop
 def noise(img, percent):
+    img = np.array(img, dtype=np.int16) # Changement de type pour pouvoir affecter valeur negative aux pixels
     for row in range (len(img)):
         for col in range (len(image[row])):
             if (random()*100 < percent):
                 for rgb in range (3):
-                    img[row][col][rgb] = 0 # TODO voir si 0 est bien pour pixel retiré, ou plutot utiliser -100
+                    img[row][col][rgb] = -1 # TODO voir si 0 est bien pour pixel retiré, ou plutot utiliser -100
     return img
 
 # TODO : numpy pour les forloop
 def deleteRectangle(img, row, col, height, width):
+    img = np.array(img, dtype=np.int16)
     for i in range (row, row + height):
         for j in range (col, col + width):
             for rgb in range (3):
-                img[i][j][rgb] = 0
+                img[i][j][rgb] = -1
     return img
 
 def getPatch(img, row, col, h):
@@ -99,10 +101,11 @@ def vectorToPatch(vector, h):
     return vector.reshape(h, h, 3)
 
 def getDictionary(img, h):
+    step = h
     dictionary = []
    
-    for row in range (int (h/2), len(img) - int (h/2)):
-        for col in range (int (h/2), len(img[row]) - int (h/2)):
+    for row in range (int (h/2), len(img) - int (h/2), step):
+        for col in range (int (h/2), len(img[row]) - int (h/2), step):
             dictionary.append( getPatch(img, row, col, h) )
     dictionary = np.array(dictionary)
     # TODO : A opti..
@@ -114,7 +117,7 @@ def getDictionary(img, h):
         patch = dictionary[pi]
         for row in range (len(patch)):
             for col in range (len(patch[row])):
-                if patch[row][col][0] == 0 and patch[row][col][1] == 0 and patch[row][col][2] == 0:
+                if patch[row][col][0] == -1 and patch[row][col][1] == -1 and patch[row][col][2] == -1:
                     remove = True
         if not remove:
             filteredDico.append(patchToVector(patch))
@@ -136,61 +139,59 @@ def getPatchMissingPixels(img, h):
         patch = patchMissingPx[pi]
         for row in range (len(patch)):
             for col in range (len(patch[row])):
-                if patch[row][col][0] == 0 and patch[row][col][1] == 0 and patch[row][col][2] == 0:
+                if patch[row][col][0] == -1 and patch[row][col][1] == -1 and patch[row][col][2] == -1:
                     missingPx = True
         if missingPx:
-            filteredMissingPx.append(patch)
+            filteredMissingPx.append(patchToVector(patch))
     return np.array(filteredMissingPx)
 
-def getMiddleDico(dico, h):
-    middle = []
-    for patch in range (len(dico)):
-        middle.append( dico[patch][int (h/2)][int (h/2)][0] )
-    return np.array(middle)
+def getOnePatch(img, h):
+    for row in range (int (h/2), len(img) - int (h/2)):
+        for col in range (int (h/2), len(img[row]) - int (h/2)):
+            patch = getPatch(img, row, col, h)
+            #for i in range (len(patch)):
+                #for j in range (len(patch[i])):
+            if patch[int (h/2)][int (h/2)][0] == -1 and patch[int (h/2)][int (h/2)][1] == -1 and patch[int (h/2)][int (h/2)][2] == -1:
+                return {"patch": patchToVector(patch), "x":row, "y":col}
 
-def lassoImpaiting(dictionnary, patch):
-    print("STARTING LASSO IMPAINTING")
-    lasso = Lasso(alpha=0.1, max_iter=1000)
-    #lasso.fit(dictionnary, middleDictionnary)
-    #lasso.fit([[1,2], [2,4], [4,8]], [[2,4], [4,8], [8,16]])
+def lassoImpaiting(dictionnary, patch, h):
+    print("STARTING LASSO IMPAINTING..")
+    lasso = Lasso(alpha=5, max_iter=1000, fit_intercept=False, positive=True)    
     
-    lasso.fit(dictionnary.transpose(), patch) 
-    #print(dictionnary.transpose() * lasso.coef_)
-    reconstruct = np.matmul(dictionnary.transpose(), lasso.coef_)
-    print(len(reconstruct))
-    recons = np.zeros(27)
-    for i in range (27):
-        for j in range (100):
-            recons[i] += dictionnary[j][i] * lasso.coef_[j]
-    print(patch)
-    print(recons)
-    #x1 = patchToVector(dictionnary[0])
-    #x2 = patchToVector(dictionnary[30])
-    #print(x1)
-    #print(x2)
-    #print(np.array([x1,x2]))
-    #target = x2.copy()
-    ##target[0] = 60
-    ##target[1] = 91
-    #lasso.fit(np.array([x1,x2]).transpose(), target)
-    
-    #row_ind = np.array([0, 1, 2, 0, 1, 2])
-    #col_ind = np.array([0, 0, 0, 1, 1, 1])
-    #data = np.array([2, 2, 5, 8, 8, 20], dtype=float)
-    #mat_coo = sparse.coo_matrix((data, (row_ind, col_ind)))
-    #print(mat_coo)
-    #print(mat_coo.todense())
-    
-    ##a = np.array([2,2,5,8,8,20]).reshape(2,3).transpose()
-    #a = np.array([[2,2,5], [8,8,20]]).transpose()
-    
-    #lasso.fit(mat_coo, [2, 2, 5])
-    #print(lasso.predict([[1,2]]))
-    
+    indices = np.argwhere(patch["patch"] == -1)
+    dico = np.delete(dictionnary, indices, axis=1)
+    patch = np.delete(patch["patch"], indices)
+    lasso.fit(dico.transpose(), patch) 
+
+    reconstructedPatch = np.matmul(dictionnary.transpose(), lasso.coef_) # voir dico ou dictionary
+    #print(patch)
+    #print(reconstructedPatch)
     #print(lasso.coef_)
+
+    return vectorToPatch(reconstructedPatch, h)
+
+def reconstructNoisyImage(noisyImage, h):
+    #patchMissingPx = getPatchMissingPixels(image, h)
+    plt.figure()
+    dico = getDictionary(noisyImage, h) # TODO : Voir si a reconstruire dans la boucle avec les nouveaux pixels ou non
+    
+    for i in range (225):
+        print(len(dico))
+        print(i)
+        patch = getOnePatch(noisyImage, h)
+        #print(patch)
+        reconstructed = lassoImpaiting(dico, patch, h)
+        #print(reconstructed)
+        #print(reconstructed[int (h/2)][int (h/2)][0], reconstructed[int (h/2)][int (h/2)][1], reconstructed[int (h/2)][int (h/2)][2])
+        noisyImage[patch["x"]][patch["y"]][0] = reconstructed[int (h/2)][int (h/2)][0]
+        noisyImage[patch["x"]][patch["y"]][1] = reconstructed[int (h/2)][int (h/2)][1]
+        noisyImage[patch["x"]][patch["y"]][2] = reconstructed[int (h/2)][int (h/2)][2]
+        plt.pause(0.05)
+        plt.imshow(noisyImage)
 
 if __name__=="__main__":
     ### PART 1 ################################################################
+    print("PART 1 ################################################################################################")
 
     # Loading data
     dataTrain = load_usps("USPS_train.txt")
@@ -238,28 +239,40 @@ if __name__=="__main__":
     
     ### PART 2 ################################################################
     # TODO : voir si les fonctions de noise et de manipulation d'image modifient l'image d'origine (à priori oui)
-    print("PART 2 ###############################################################################")
-    image = readImage("akitaSmall.jpg")
+    print("PART 2 ################################################################################################")
+    image = readImage("akitaMacro.jpg")
     #plt.figure()
     #plt.imshow(image)
     #plt.figure()
-    #plt.imshow(noise(image, 5))
+    #plt.imshow(noise(image.copy(), 10))
     #plt.figure()
     #plt.imshow(deleteRectangle(image, 100, 200, 60, 120))
     
-    patch = getPatch(image, 1, 2, 3)
+    #patch = getPatch(image, 1, 2, 3)
     #print(patch)
     #print(patchToVector(patch))
     #print( vectorToPatch(patchToVector(patch), 3) )
     
-    dico = getDictionary(image, 3)
+    #dico = getDictionary(image, 3)
     #patchMissingPx = getPatchMissingPixels(image, 3)
-    #middleDico = getMiddleDico(dico, 3)
-    lassoImpaiting(dico[:3000], dico[2000])
+    #reconstructed = lassoImpaiting(dico, dico[1])
+    #print(reconstructed)
+    
+    
+    noisyImage = deleteRectangle(image.copy(), 50, 50, 15, 15)
+    #noisyImage = noise(image.copy(), 0.5)
+    plt.figure()
+    plt.imshow(image)
+    plt.figure()
+    plt.imshow(noisyImage)
+    reconstructNoisyImage(noisyImage, 3)
    
-    
-    
-    
+    #patch = getOnePatch(noisyImage, 3)
+    #indices = np.argwhere(patch["patch"] == -1)
+    #dico = getDictionary(noisyImage, 3)
+    #dico = np.delete(dico, indices, axis=1)
+  
+    #print(np.delete(patch["patch"], indices))
     
     
     
