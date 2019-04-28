@@ -1,4 +1,4 @@
 # Inpainting
 Image reconstruction with Python
 
-![alt text](results/akitaVerySmall.png)
+![alt text](results/akitaVerySmall1.png)
