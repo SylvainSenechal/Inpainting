@@ -156,7 +156,7 @@ def getOnePatch(img, h):
 
 def lassoImpaiting(dictionnary, patch, h):
     print("STARTING LASSO IMPAINTING..")
-    lasso = Lasso(alpha=5, max_iter=1000, fit_intercept=False, positive=True)    
+    lasso = Lasso(alpha=5, max_iter=3000, fit_intercept=False, positive=False, selection='random', tol=0.0001)    
     
     indices = np.argwhere(patch["patch"] == -1)
     dico = np.delete(dictionnary, indices, axis=1)
@@ -175,19 +175,25 @@ def reconstructNoisyImage(noisyImage, h):
     plt.figure()
     dico = getDictionary(noisyImage, h) # TODO : Voir si a reconstruire dans la boucle avec les nouveaux pixels ou non
     
-    for i in range (225):
-        print(len(dico))
+    for i in range (100):
         print(i)
         patch = getOnePatch(noisyImage, h)
         #print(patch)
         reconstructed = lassoImpaiting(dico, patch, h)
-        #print(reconstructed)
-        #print(reconstructed[int (h/2)][int (h/2)][0], reconstructed[int (h/2)][int (h/2)][1], reconstructed[int (h/2)][int (h/2)][2])
-        noisyImage[patch["x"]][patch["y"]][0] = reconstructed[int (h/2)][int (h/2)][0]
-        noisyImage[patch["x"]][patch["y"]][1] = reconstructed[int (h/2)][int (h/2)][1]
-        noisyImage[patch["x"]][patch["y"]][2] = reconstructed[int (h/2)][int (h/2)][2]
-        plt.pause(0.05)
-        plt.imshow(noisyImage)
+        
+
+        for row in range (h):
+            for col in range (h):
+                if (noisyImage[row - int (h/2) + patch["x"]][col- int (h/2) + patch["y"]][0] == -1):
+                    noisyImage[row - int (h/2) + patch["x"]][col- int (h/2) + patch["y"]] = reconstructed[row][col]
+        #noisyImage[patch["x"]][patch["y"]][0] = reconstructed[int (h/2)][int (h/2)][0]
+        #noisyImage[patch["x"]][patch["y"]][1] = reconstructed[int (h/2)][int (h/2)][1]
+        #noisyImage[patch["x"]][patch["y"]][2] = reconstructed[int (h/2)][int (h/2)][2]
+        if (i%1 == 0):
+            plt.imshow(noisyImage)
+            plt.pause(0.05)
+        #plt.pause(0.05)
+    plt.imshow(noisyImage)
 
 if __name__=="__main__":
     ### PART 1 ################################################################
@@ -240,7 +246,7 @@ if __name__=="__main__":
     ### PART 2 ################################################################
     # TODO : voir si les fonctions de noise et de manipulation d'image modifient l'image d'origine (à priori oui)
     print("PART 2 ################################################################################################")
-    image = readImage("akitaMacro.jpg")
+    image = readImage("akitaSmall.jpg")
     #plt.figure()
     #plt.imshow(image)
     #plt.figure()
@@ -259,14 +265,17 @@ if __name__=="__main__":
     #print(reconstructed)
     
     
-    noisyImage = deleteRectangle(image.copy(), 50, 50, 15, 15)
-    #noisyImage = noise(image.copy(), 0.5)
+    noisyImage = deleteRectangle(image.copy(), 70, 120, 60, 60)
+    #noisyImage = noise(image.copy(), 5)
     plt.figure()
     plt.imshow(image)
-    plt.figure()
-    plt.imshow(noisyImage)
-    reconstructNoisyImage(noisyImage, 3)
-   
+    #plt.figure()
+    #plt.imshow(noisyImage)
+    reconstructNoisyImage(noisyImage, 11)
+    # %matplotlib auto
+
+    # TODO : reconstruire sur tous le patch et pas juste le pixel centre
+    
     #patch = getOnePatch(noisyImage, 3)
     #indices = np.argwhere(patch["patch"] == -1)
     #dico = getDictionary(noisyImage, 3)
@@ -283,6 +292,8 @@ if __name__=="__main__":
     
     
     # RAPPORT A NOTER UTILITE DU ALPHA : pour avoir querlques coeff du lasso eleves et le reste a 0,
-    # plutot que tous a 0.0000..
+    # plutot que tous a 0.0000.. + la sparcité produit des images non flous, plus sharp => plus 
+    # - Parler de la cohérance meilleure sur la bordure gauche que droite car on balaye depuis la gauche, donc
+    # on reconstruit à partir des pixels qu'on possède à droite
     # TODO idee : faire une fonction de dst entre imgage de base et image reconstruite pour voir la qualite
     # TODO idee : noise function avec perlin noise ?
