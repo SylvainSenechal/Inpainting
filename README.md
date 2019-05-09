@@ -1,5 +1,5 @@
 # Inpainting
 Image reconstruction with Python
 
-![akitaVerySmall](akitaVerySmall.png) 
+![akitaVerySmall](akitaVerySmall.jpg) 
 ![akitaVerySmall1](results/akitaVerySmall1.png)
