@@ -16,7 +16,7 @@ def load_usps(fn):
     return tmp[:,1:],tmp[:,0].astype(int)
 
 def show_usps(data):
-    plt.imshow(data.reshape((16,16)),interpolation="nearest",cmap="gray")
+    plt.imshow(data.reshape((16,16)))
 
 def linearRegression(tX, tY, teX, teY):
     print("STARTING LINEAR REGRESSION")
@@ -48,6 +48,7 @@ def lassoRegression(tX, tY, teX, teY):
     
     print(lasso.score(teX, teY))
     print(lasso.intercept_)
+
     print("score lassoRegression : ", score(predictions, teY), "out of : ", len(teY))
     #print(lasso.coef_)
 
@@ -68,10 +69,8 @@ def readImage(path):
     # img[0][0] => premiere rangee et premiere colonne
     # img[0][0][0] => premiere rangee, colonne, teinte rouge
     # (255,255,255) => blanc, 0 => noir
-    #print(len(image[0]))
     return np.array(image)
 
-# TODO : numpy pour les forloop
 def noise(img, percent, h):
     img = np.array(img, dtype=np.int16) # Changement de type pour pouvoir affecter valeur negative aux pixels
     for row in range (int(h/2), len(img) - int(h/2)):
@@ -82,7 +81,7 @@ def noise(img, percent, h):
     return img
 
 # TODO : numpy pour les forloop
-def deleteRectangle(img, row, col, height, width):
+def deleteRectangle(img, row, col, height, width): # Suppression d'une partie entiere de l'image
     img = np.array(img, dtype=np.int16)
     for i in range (row, row + height):
         for j in range (col, col + width):
@@ -90,19 +89,20 @@ def deleteRectangle(img, row, col, height, width):
                 img[i][j][rgb] = -1
     return img
 
-def getPatch(img, row, col, h):
+def getPatch(img, row, col, h): # Récupération d'un patch centré en row, col
     patch = np.empty(shape=(h, h, 3))
     for i in range (h):
         for j in range (h):
             patch[i][j] = img[row - int (h/2) + i][col - int (h/2) + j]
     return patch
 
+# Transformations tenseur / vecteur
 def patchToVector(patch):
     return patch.flatten()
 def vectorToPatch(vector, h):
     return vector.reshape(h, h, 3)
 
-def getDictionary(img, h):
+def getDictionary(img, h): # Récupération du dictionnaire
     step = h
     dictionary = []
    
@@ -125,7 +125,7 @@ def getDictionary(img, h):
             filteredDico.append(patchToVector(patch))
     return np.array(filteredDico)
 
-def getPatchMissingPixels(img, h):
+def getPatchMissingPixels(img, h): # Récupération de tous les patchs avec au moins un pixel manquant
     patchMissingPx = []
    
     for row in range (int (h/2), len(img) - int (h/2)):
@@ -141,13 +141,13 @@ def getPatchMissingPixels(img, h):
         patch = patchMissingPx[pi]
         for row in range (len(patch)):
             for col in range (len(patch[row])):
-                if patch[row][col][0] == -1 and patch[row][col][1] == -1 and patch[row][col][2] == -1:
+                if patch[row][col][0] == -1: # and patch[row][col][1] == -1 and patch[row][col][2] == -1:
                     missingPx = True
         if missingPx:
             filteredMissingPx.append(patchToVector(patch))
     return np.array(filteredMissingPx)
 
-def getOnePatch(img, h, nextRow):
+def getOnePatch(img, h, nextRow): # Récupération d'un patch avec au moins un pixel manquant
     for row in range (nextRow, len(img) - int (h/2)):
         for col in range (int (h/2), len(img[row]) - int (h/2)):
             patch = getPatch(img, row, col, h)
@@ -157,7 +157,7 @@ def getOnePatch(img, h, nextRow):
                 return {"patch": patchToVector(patch), "x":row, "y":col}
     return False # Si il n'y a plus de patch à repeindre
 
-def lassoInpainting(dictionnary, patch, h, alpha):
+def lassoInpainting(dictionnary, patch, h, alpha): # Reconstruction d'un patch
     print("STARTING LASSO IMPAINTING..")
     lasso = Lasso(alpha=alpha, max_iter=2000, fit_intercept=False, positive=True, selection='random', tol=0.0001)    
     
@@ -166,14 +166,10 @@ def lassoInpainting(dictionnary, patch, h, alpha):
     patch = np.delete(patch["patch"], indices)
     lasso.fit(dico.transpose(), patch) 
 
-    reconstructedPatch = np.matmul(dictionnary.transpose(), lasso.coef_) # voir dico ou dictionary
-    #print(patch)
-    #print(reconstructedPatch)
-    #print(lasso.coef_)
-
+    reconstructedPatch = np.matmul(dictionnary.transpose(), lasso.coef_) 
     return vectorToPatch(reconstructedPatch, h)
 
-def reconstructNoisyImage(noisyImage, h, alpha = 1):
+def reconstructNoisyImage(noisyImage, h, alpha = 1): # Renvoie l'image bruitée reconstruite
     plt.figure()
     dico = getDictionary(noisyImage, h)
     print(len(dico))
@@ -190,15 +186,16 @@ def reconstructNoisyImage(noisyImage, h, alpha = 1):
             for col in range (h):
                 if (noisyImage[row - int (h/2) + patch["x"]][col- int (h/2) + patch["y"]][0] == -1):
                     noisyImage[row - int (h/2) + patch["x"]][col- int (h/2) + patch["y"]] = reconstructed[row][col]
-        #if (drawPatch%10 == 0): # Affichage régulier
-        #    plt.imshow(noisyImage)
-        #    plt.pause(0.05)
+        if (drawPatch%1 == 0): # Affichage régulier
+            plt.imshow(noisyImage)
+            plt.pause(0.05)
         patch = getOnePatch(noisyImage, h, nextRow)
 
-    #plt.imshow(noisyImage)
+    plt.imshow(noisyImage)
     return noisyImage
 
-def qualityReconstruction(sourceImg, reconstructedImg):
+
+def qualityReconstruction(sourceImg, reconstructedImg): # Erreur de reconstruction (somme des différences entre pixels)
     error = 0
     for row in range (len(sourceImg)):
         for col in range (len(sourceImg[row])):
@@ -206,10 +203,10 @@ def qualityReconstruction(sourceImg, reconstructedImg):
                 error += abs(sourceImg[row][col][rgb] - reconstructedImg[row][col][rgb])
     return error
 
-def benchmarkAlpha(image, noisyImage):
+def benchmarkAlpha(image, noisyImage): # Plot l'erreur de reconstruction pour différents Alpha
     alphas = []
     qualities = []
-    for alpha in np.arange(0, 7, 0.5):
+    for alpha in np.arange(0, 2, 0.2):
         reconstructedImg = reconstructNoisyImage(noisyImage.copy(), 5, alpha)
         qualityRecons = qualityReconstruction(image, reconstructedImg)
         print("Quality reconstruction : ", qualityRecons)
@@ -218,7 +215,7 @@ def benchmarkAlpha(image, noisyImage):
         plt.figure(3)
         plt.plot(alphas, qualities)
         
-def benchmarkCoeff(image, noisyImage):
+def benchmarkCoeff(image, noisyImage): # Plot les coefficients du Lasso pour différents Alpha
     x = []
     y = []
     dico = getDictionary(noisyImage, h)
@@ -263,9 +260,8 @@ if __name__=="__main__":
     # show_usps(trainX[0])
     
     # Creating binary dataset between digitOne and digitTwo
-    # TODO : Faire une boucle de test sur toutes les digits + graph erreur
-    digitOne = 3
-    digitTwo = 4
+    digitOne = 8
+    digitTwo = 0
     tX = []
     tY = []
     teX = []
@@ -289,20 +285,15 @@ if __name__=="__main__":
     # Making linearRegression between the 2 selected digits
     linearRegression(tX, tY, teX, teY)
     ridgeRegression(tX, tY, teX, teY)
-    # TODO : Voir ALPHA dans lasso, plus Alpha est grand plus les résultats sont mauvais, normal ?
     lassoRegression(tX, tY, teX, teY)
-    
-    # VISUALISATION DU VECTEUR DE POIDS : REG.coef
-
-#0 -> 127 -1,0, 128 => 255 : 0, 1
-    
+    #plt.figure()
+    #show_usps(tX[0])
     
     #######################################################################################################################
     ### PART 2     ########################################################################################################
     #######################################################################################################################
-    # TODO : voir si les fonctions de noise et de manipulation d'image modifient l'image d'origine (à priori oui)
     print("PART 2 ################################################################################################")
-    image = readImage("autoroute.jpg")
+    image = readImage("images/autoroute.jpg")
     h = 5  # window size
     #plt.figure()
     #plt.imshow(image)
@@ -311,44 +302,24 @@ if __name__=="__main__":
     #plt.figure()
     #plt.imshow(deleteRectangle(image, 100, 200, 60, 120))
     
-    #patch = getPatch(image, 1, 2, 3)
-    #print(patch)
-    #print(patchToVector(patch))
-    #print( vectorToPatch(patchToVector(patch), 3) )
-    
-    #dico = getDictionary(image, 3)
-    #patchMissingPx = getPatchMissingPixels(image, 3)
-    #reconstructed = lassoInpainting(dico, dico[1])
-    #print(reconstructed)
-    
+    ##### Selection de l'image à bruiter
     #noisyImage = deleteRectangle(image.copy(), 70, 120, 60, 60) # akitaSmall
-    #noisyImage = deleteRectangle(image.copy(), 88, 176, 17, 26) # autoroute, voiture
+    noisyImage = deleteRectangle(image.copy(), 88, 176, 17, 26) # autoroute, voiture
     #noisyImage = deleteRectangle(image.copy(), 120, 315, 20, 26) # autoroute, ligne blance
-    noisyImage = noise(image.copy(), 0.05, h)
+    #noisyImage = noise(image.copy(), 2, h)
+    
+    ##### Reconstruction
     plt.figure()
-    plt.imshow(image)
-    #plt.figure()
-    #plt.imshow(noisyImage)
-    #reconstructedImg = reconstructNoisyImage(noisyImage, h)
-    #qualityRecons = qualityReconstruction(image, reconstructedImg)
-    #print("Quality reconstruction : ", qualityRecons)
+    plt.imshow(noisyImage)
+    
+    reconstructedImg = reconstructNoisyImage(noisyImage, h)
+    qualityRecons = qualityReconstruction(image, reconstructedImg)
+    print("Quality reconstruction : ", qualityRecons)
 
 
-    ### Benchmark
+    ##### Benchmark
     #benchmarkAlpha(image, noisyImage)
-    benchmarkCoeff(image, noisyImage)
-    
-    
-    
-    
+    #benchmarkCoeff(image, noisyImage)
     
     
     # %matplotlib auto
-    #hsv mauvaise idee
-    
-    # RAPPORT A NOTER UTILITE DU ALPHA : pour avoir querlques coeff du lasso eleves et le reste a 0,
-    # plutot que tous a 0.0000.. + la sparcité produit des images non flous, plus sharp => plus 
-    # - Parler de la cohérance meilleure sur la bordure gauche que droite car on balaye depuis la gauche, donc
-    # on reconstruit à partir des pixels qu'on possède à droite
-    # TODO idee : faire une fonction de dst entre imgage de base et image reconstruite pour voir la qualite
-    # TODO idee : noise function avec perlin noise ?
